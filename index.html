@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>烏龜每週體重追蹤</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; }
+  h1 { color: #2c3e50; }
+  table { border-collapse: collapse; width: 100%; max-width: 500px; margin-top: 20px; }
+  th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+  th { background-color: #f2f2f2; }
+  input[type="number"] { width: 80px; }
+  button { margin-top: 10px; padding: 5px 10px; }
+  canvas { max-width: 500px; margin-top: 30px; }
+</style>
+</head>
+<body>
+
+<h1>烏龜每週體重追蹤</h1>
+
+<label>週數: <input type="number" id="week" min="1" max="52" value="1"></label>
+<label>體重 (g): <input type="number" id="weight" min="0"></label>
+<button onclick="addWeight()">新增紀錄</button>
+
+<table id="weightTable">
+  <thead>
+    <tr>
+      <th>週數</th>
+      <th>體重 (g)</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<canvas id="weightChart"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let weightRecords = JSON.parse(localStorage.getItem('weightRecords')) || [];
+
+function saveToStorage() {
+  localStorage.setItem('weightRecords', JSON.stringify(weightRecords));
+}
+
+function addWeight() {
+  const week = parseInt(document.getElementById('week').value);
+  const weight = parseFloat(document.getElementById('weight').value);
+
+  if (!week || !weight) {
+    alert('請輸入週數與體重');
+    return;
+  }
+
+  // 檢查週數是否已存在，若存在則更新
+  const existing = weightRecords.find(r => r.week === week);
+  if (existing) {
+    existing.weight = weight;
+  } else {
+    weightRecords.push({ week, weight });
+  }
+
+  saveToStorage();
+  renderTable();
+  renderChart();
+}
+
+function deleteWeight(week) {
+  weightRecords = weightRecords.filter(r => r.week !== week);
+  saveToStorage();
+  renderTable();
+  renderChart();
+}
+
+function renderTable() {
+  const tbody = document.querySelector('#weightTable tbody');
+  tbody.innerHTML = '';
+  weightRecords.sort((a,b) => a.week - b.week).forEach(record => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${record.week}</td>
+      <td>${record.weight}</td>
+      <td><button onclick="deleteWeight(${record.week})">刪除</button></td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+let chartInstance = null;
+function renderChart() {
+  const ctx = document.getElementById('weightChart').getContext('2d');
+  const sorted = [...weightRecords].sort((a,b) => a.week - b.week);
+  const labels = sorted.map(r => `週 ${r.week}`);
+  const data = sorted.map(r => r.weight);
+
+  if (chartInstance) chartInstance.destroy();
+
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '體重 (g)',
+        data: data,
+        borderColor: 'rgba(75, 192, 192, 1)',
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        fill: true,
+        tension: 0.2
+      }]
+    },
+    options: {
+      scales: {
+        y: { beginAtZero: false }
+      }
+    }
+  });
+}
+
+// 初始化
+renderTable();
+renderChart();
+</script>
+
+</body>
+</html>
